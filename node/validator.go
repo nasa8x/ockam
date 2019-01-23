@@ -1,4 +1,4 @@
-package types
+package node
 
 // ValidatorsResponse is
 type ValidatorsResponse struct {

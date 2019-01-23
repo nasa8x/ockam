@@ -1,21 +1,22 @@
 package http
 
 import (
-	"email/ockam/node"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
 
-	"github.com/ockam-network/ockam/node/types"
+	"github.com/ockam-network/ockam/node"
+
+	// "github.com/ockam-network/ockam/node/types"
 	"github.com/pkg/errors"
 )
 
 // CommitResponse is
 type CommitResponse struct {
-	Error  interface{}  `json:"error"`
-	Result types.Commit `json:"result"`
+	Error  interface{} `json:"error"`
+	Result node.Commit `json:"result"`
 }
 
 // TxResponse is
@@ -35,8 +36,19 @@ type BroadcastTxSyncResponse struct {
 	Error interface{} `json:"error"`
 }
 
+// ValidatorsResponse is
+type ValidatorsResponse struct {
+	Jsonrpc string `json:"jsonrpc"`
+	ID      string `json:"id"`
+	Result  struct {
+		BlockHeight string `json:"block_height"`
+		Validators  []*node.Validator
+	} `json:"result"`
+	Error interface{} `json:"error"`
+}
+
 // Commit fetches the the commit at the provided height
-func (n *Node) Commit(height string) (*types.Commit, error) {
+func (n *Node) Commit(height string) (*node.Commit, error) {
 	r := new(CommitResponse)
 	err := n.Call(fmt.Sprintf("/commit?height=%s", height), &r)
 	if err != nil {
@@ -65,6 +77,17 @@ func (n *Node) Tx(hash []byte) (*node.Tx, error) {
 		return nil, errors.WithStack(err)
 	}
 	return &r.Result, nil
+}
+
+//Validators fetches the validator set at the provided height
+// Validators is
+func (n *Node) Validators(height string) ([]*node.Validator, error) {
+	r := new(ValidatorsResponse)
+	err := n.Call(fmt.Sprintf("/validators?height=%s", height), &r)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return r.Result.Validators, nil
 }
 
 // Call makes an RPC call

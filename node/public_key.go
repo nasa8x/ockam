@@ -1,4 +1,4 @@
-package types
+package node
 
 import (
 	"golang.org/x/crypto/ed25519"

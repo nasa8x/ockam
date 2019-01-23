@@ -3,13 +3,14 @@
 package http
 
 import (
+	// "email/ockam/node"
 	"encoding/hex"
 	"strings"
 
 	"github.com/ockam-network/ockam"
 	"github.com/ockam-network/ockam/chain"
 	"github.com/ockam-network/ockam/claim"
-	"github.com/ockam-network/ockam/node/types"
+	"github.com/ockam-network/ockam/node"
 	"github.com/pkg/errors"
 )
 
@@ -20,7 +21,7 @@ type Node struct {
 	port         int
 	chain        ockam.Chain
 	peers        []ockam.Node
-	latestCommit *types.Commit
+	latestCommit *node.Commit
 }
 
 // Option is
@@ -77,13 +78,33 @@ func (n *Node) Sync() error {
 	return nil
 }
 
+func (n *Node) FullCommit(height string) (*node.FullCommit, error) {
+	validators, err := n.Validators(height)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	commit, err := n.Commit(height)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	fc, err := node.MakeFullCommit(validators, commit)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
+	return fc, nil
+
+}
+
 // Chain is
 func (n *Node) Chain() ockam.Chain {
 	return n.chain
 }
 
 // LatestCommit returns
-func (n *Node) LatestCommit() *types.Commit {
+func (n *Node) LatestCommit() *node.Commit {
 	return n.latestCommit
 }
 
@@ -115,7 +136,7 @@ func (n *Node) Peers() []ockam.Node {
 	return n.peers
 }
 
-func (n *Node) getLatestCommit() (*types.Commit, error) {
+func (n *Node) getLatestCommit() (*node.Commit, error) {
 	r := new(CommitResponse)
 	err := n.Call("/commit", &r)
 	if err != nil {

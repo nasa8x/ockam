@@ -2,12 +2,13 @@
 package node
 
 import (
+	"fmt"
 	"math/rand"
 	"time"
 
 	"github.com/ockam-network/ockam"
 	"github.com/ockam-network/ockam/chain"
-	"github.com/ockam-network/ockam/node/types"
+	// "github.com/ockam-network/ockam/node/types"
 	"github.com/ockam-network/ockam/random"
 	"github.com/pkg/errors"
 )
@@ -21,7 +22,8 @@ func init() {
 // expects other peers to implement
 type Peer interface {
 	ockam.Node
-	LatestCommit() *types.Commit
+	LatestCommit() *Commit
+	FullCommit(height string) (*FullCommit, error)
 }
 
 // Tx is
@@ -51,7 +53,8 @@ type Node struct {
 	chain           ockam.Chain
 	peers           []Peer
 	peerDiscoverers []ockam.NodeDiscoverer
-	latestCommit    *types.Commit
+	latestCommit    *Commit
+	commitStore     ockam.CommitStore
 }
 
 // Option is
@@ -78,6 +81,13 @@ func New(options ...Option) (*Node, error) {
 func PeerDiscoverer(d ockam.NodeDiscoverer) Option {
 	return func(n *Node) {
 		n.peerDiscoverers = append(n.peerDiscoverers, d)
+	}
+}
+
+//CommitStore is
+func CommitStore(s ockam.CommitStore) Option {
+	return func(n *Node) {
+		n.commitStore = s
 	}
 }
 
@@ -123,6 +133,30 @@ func (n *Node) Sync() error {
 	// get the latest commit from the se
 	n.latestCommit = selectedPeer.LatestCommit()
 
+	if n.commitStore != nil {
+		err := Initialize(selectedPeer, n.commitStore)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+
+		verifier := NewVerifier(n.commitStore)
+		last, err := verifier.GetLastTrusted()
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println("Last Trusted: ", last.Height)
+		isVerified, err := verifier.Verify(n.latestCommit, selectedPeer)
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println("Is Verified: ", isVerified)
+		last, err = verifier.GetLastTrusted()
+		if err != nil {
+			fmt.Println(err)
+		}
+		fmt.Println("Last Trusted: ", last.Height)
+
+	}
 	if n.chain == nil {
 		c, err := chain.New(chain.TrustedNode(n), chain.ID(n.latestCommit.SignedHeader.Header.ChainID))
 		if err != nil {
