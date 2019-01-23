@@ -54,7 +54,7 @@ type Node struct {
 	peers           []Peer
 	peerDiscoverers []ockam.NodeDiscoverer
 	latestCommit    *Commit
-	commitStore     ockam.CommitStore
+	verifier        *Verifier
 }
 
 // Option is
@@ -85,9 +85,10 @@ func PeerDiscoverer(d ockam.NodeDiscoverer) Option {
 }
 
 //CommitStore is
-func CommitStore(s ockam.CommitStore) Option {
+func AttachVerifier(s ockam.CommitStore) Option {
 	return func(n *Node) {
-		n.commitStore = s
+		verifier := NewVerifier(s)
+		n.verifier = verifier
 	}
 }
 
@@ -133,24 +134,24 @@ func (n *Node) Sync() error {
 	// get the latest commit from the se
 	n.latestCommit = selectedPeer.LatestCommit()
 
-	if n.commitStore != nil {
-		err := Initialize(selectedPeer, n.commitStore)
+	if n.verifier != nil {
+		err := Initialize(selectedPeer, n.verifier.store)
 		if err != nil {
 			return errors.WithStack(err)
 		}
 
-		verifier := NewVerifier(n.commitStore)
-		last, err := verifier.GetLastTrusted()
+		// verifier := NewVerifier(n.commitStore)
+		last, err := n.verifier.GetLastTrusted()
 		if err != nil {
 			fmt.Println(err)
 		}
 		fmt.Println("Last Trusted: ", last.Height)
-		isVerified, err := verifier.Verify(n.latestCommit, selectedPeer)
+		isVerified, err := n.verifier.Verify(n.latestCommit, selectedPeer)
 		if err != nil {
 			fmt.Println(err)
 		}
 		fmt.Println("Is Verified: ", isVerified)
-		last, err = verifier.GetLastTrusted()
+		last, err = n.verifier.GetLastTrusted()
 		if err != nil {
 			fmt.Println(err)
 		}
