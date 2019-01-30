@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/ockam-network/ockam/entity"
 	"github.com/ockam-network/ockam/key/ed25519"
@@ -45,6 +46,14 @@ func main() {
 	exitOnError(err)
 
 	fmt.Printf("registrationClaim - %s\n", registrationClaim.ID())
+
+	did := registrationClaim.Issuer().ID().String()
+	time.Sleep(5 * time.Second)
+
+	bytes, _, err := ockamChain.FetchEntity(did)
+	exitOnError(err)
+
+	fmt.Println(string(bytes))
 }
 
 func exitOnError(err error) {

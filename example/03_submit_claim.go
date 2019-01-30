@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/ockam-network/ockam/claim"
 	"github.com/ockam-network/ockam/entity"
@@ -50,6 +51,13 @@ func main() {
 	exitOnError(err)
 
 	fmt.Printf("Submitted - " + temperatureClaim.ID())
+	fmt.Println()
+	time.Sleep(5 * time.Second)
+
+	bytes, _, err := ockamChain.FetchClaim(temperatureClaim.ID())
+	exitOnError(err)
+
+	fmt.Printf("Fetched claim:  - %s\n", string(bytes))
 }
 
 func exitOnError(err error) {
