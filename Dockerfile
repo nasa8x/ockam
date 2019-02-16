@@ -47,6 +47,34 @@ CMD ["-a", "build"]
 FROM golang:1.11.2-alpine3.8@sha256:692eff58ac23cafc7cb099793feb00406146d187cd3ba0226809317952a9cf37 as go
 ENV GOOS=linux GOARCH=amd64 CGO_ENABLED=0
 RUN apk --update add --no-cache git
+
+RUN go get github.com/miekg/pkcs11
+
+# the following installation script was inspired by https://github.com/psmiraglia/docker-softhsm
+ENV SOFTHSM2_VERSION=2.5.0 \
+    SOFTHSM2_SOURCES=/tmp/softhsm2
+
+# install build dependencies for softhsm
+RUN apk --update add \
+        alpine-sdk \
+        autoconf \
+        automake \
+        git \
+        libtool \
+        openssl-dev
+
+# build and install SoftHSM2
+RUN git clone https://github.com/opendnssec/SoftHSMv2.git ${SOFTHSM2_SOURCES}
+WORKDIR ${SOFTHSM2_SOURCES}
+
+RUN git checkout ${SOFTHSM2_VERSION} -b ${SOFTHSM2_VERSION} \
+    && sh autogen.sh \
+    && ./configure --prefix=/usr/local \
+    && make \
+    && make install
+
+RUN rm -fr ${SOFTHSM2_SOURCES}
+
 WORKDIR /project
 ENTRYPOINT ["go"]
 
