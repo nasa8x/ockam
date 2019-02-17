@@ -1,3 +1,5 @@
+// +build softhsm
+
 package pkcs11
 
 import (

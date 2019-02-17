@@ -45,36 +45,8 @@ CMD ["-a", "build"]
 # DOCKER_BUILDKIT=1 docker build --target go --tag ockam/tool/go:latest .
 # docker run --rm --volume "$(pwd):/project" ockam/tool/go:latest
 FROM golang:1.11.2-alpine3.8@sha256:692eff58ac23cafc7cb099793feb00406146d187cd3ba0226809317952a9cf37 as go
-ENV GOOS=linux GOARCH=amd64 CGO_ENABLED=0
-RUN apk --update add --no-cache git
-
-RUN go get github.com/miekg/pkcs11
-
-# the following installation script was inspired by https://github.com/psmiraglia/docker-softhsm
-ENV SOFTHSM2_VERSION=2.5.0 \
-    SOFTHSM2_SOURCES=/tmp/softhsm2
-
-# install build dependencies for softhsm
-RUN apk --update add \
-        alpine-sdk \
-        autoconf \
-        automake \
-        git \
-        libtool \
-        openssl-dev
-
-# build and install SoftHSM2
-RUN git clone https://github.com/opendnssec/SoftHSMv2.git ${SOFTHSM2_SOURCES}
-WORKDIR ${SOFTHSM2_SOURCES}
-
-RUN git checkout ${SOFTHSM2_VERSION} -b ${SOFTHSM2_VERSION} \
-    && sh autogen.sh \
-    && ./configure --prefix=/usr/local \
-    && make \
-    && make install
-
-RUN rm -fr ${SOFTHSM2_SOURCES}
-
+ENV GOOS=linux GOARCH=amd64 CGO_ENABLED=1
+RUN apk --update add --no-cache gcc g++ libtool git
 WORKDIR /project
 ENTRYPOINT ["go"]
 
@@ -112,3 +84,18 @@ RUN wget https://github.com/goreleaser/goreleaser/releases/download/v0.95.2/gore
 		&& chmod u+x goreleaser \
 		&& cp goreleaser /usr/local/bin/
 ENTRYPOINT ["goreleaser"]
+
+# An image with go-with-softhsm v2.5.0
+#
+# DOCKER_BUILDKIT=1 docker build --target softhsm --tag ockam/tool/go-with-softhsm:latest .
+# docker run --rm --volume "$(pwd):/project" ockam/tool/go-with-softhsm:latest
+FROM go as go-with-softhsm
+RUN apk --update add --no-cache alpine-sdk autoconf automake openssl-dev
+RUN wget https://github.com/opendnssec/SoftHSMv2/archive/2.5.0.tar.gz \
+		&& echo "075476d61405948dbaf6fd90cfdd9cd57c247a0dfa5e7e8f973c17f8be978485  2.5.0.tar.gz" | sha256sum -c - \
+		&& tar xvf 2.5.0.tar.gz \
+		&& cd SoftHSMv2-2.5.0 \
+		&& sh autogen.sh \
+		&& ./configure --prefix=/usr/local \
+		&& make \
+		&& make install
